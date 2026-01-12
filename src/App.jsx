@@ -1,21 +1,51 @@
 import React, { useState, useEffect, createContext, useContext } from 'react';
 
 // --- Configuration ---
-const SUPABASE_URL = "https://zpmpbnjyapszxeprcnva.supabase.co"; 
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpwbXBibmp5YXBzenhlcHJjbnZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc5ODcwOTUsImV4cCI6MjA4MzU2MzA5NX0.hVTkhf3WglUUuiIHi6lkcyfBWBxWDBIfVt1yGJlK0Ow"; 
+const getEnv = (key, fallback) => {
+  try {
+    return import.meta.env[key] || fallback;
+  } catch (e) {
+    return fallback;
+  }
+};
+
+const SUPABASE_URL = getEnv("VITE_SUPABASE_URL", "https://zpmpbnjyapszxeprcnva.supabase.co"); 
+const SUPABASE_ANON_KEY = getEnv("VITE_SUPABASE_ANON_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpwbXBibmp5YXBzenhlcHJjbnZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc5ODcwOTUsImV4cCI6MjA4MzU2MzA5NX0.hVTkhf3WglUUuiIHi6lkcyfBWBxWDBIfVt1yGJlK0Ow"); 
 
 import { 
   CheckCircle, LayoutDashboard, LogOut, ShieldCheck, 
-  Zap, Loader2, Check, TrendingUp, Smartphone, Send, 
-  X, ArrowLeft, AlertCircle, RefreshCw, UserX
+  Zap, Loader2, Check, TrendingUp, Smartphone, 
+  X, ArrowLeft, AlertCircle, RefreshCw, UserX, ChevronRight, Mail, Lock, ShieldAlert,
+  Search, Bell, Settings, ExternalLink, Activity, Sparkles, Globe, User
 } from 'lucide-react';
 
 const ADMIN_EMAILS = ['admin@writingportal.com', 'kipronoleleito594@gmail.com'];
 
 const PLANS = {
-  A1: { id: 'A1', name: 'Premium Tier', priceKes: 28000, color: 'bg-purple-600', categories: ['Online writing', 'Academic writing', 'Mercor AI'] },
-  A2: { id: 'A2', name: 'Standard Tier', priceKes: 14500, color: 'bg-indigo-600', categories: ['eBay tasks', 'Data entry', 'Chat moderation'] },
-  A3: { id: 'A3', name: 'Basic Tier', priceKes: 7500, color: 'bg-emerald-600', categories: ['Map reviews', 'Data annotation', 'Handshake AI'] }
+  A1: { 
+    id: 'A1', 
+    name: 'Premium Tier', 
+    priceKes: 28000, 
+    color: 'bg-purple-600', 
+    categories: ['Online writing accounts', 'Academic writing accounts', 'Mercor AI Accounts'],
+    description: 'Elite access for high-volume writing professionals.'
+  },
+  A2: { 
+    id: 'A2', 
+    name: 'Standard Tier', 
+    priceKes: 14500, 
+    color: 'bg-indigo-600', 
+    categories: ['eBay tasks', 'Data entry tasks', 'Chat moderation'],
+    description: 'Reliable accounts for consistent secondary income.'
+  },
+  A3: { 
+    id: 'A3', 
+    name: 'Basic Tier', 
+    priceKes: 7500, 
+    color: 'bg-emerald-600', 
+    categories: ['Map reviews', 'Data annotation', 'Handshake AI'],
+    description: 'Entry-level tasks for growing your digital profile.'
+  }
 };
 
 const AuthContext = createContext(null);
@@ -36,9 +66,7 @@ export const AuthProvider = ({ children }) => {
       try {
         const supabaseInstance = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         setClient(supabaseInstance);
-      } catch (err) {
-        setConfigError(true);
-      }
+      } catch (err) { setConfigError(true); }
     };
     document.head.appendChild(script);
   }, []);
@@ -60,10 +88,7 @@ export const AuthProvider = ({ children }) => {
   }, [client]);
 
   useEffect(() => {
-    if (!user || !client) {
-      setProfile(null);
-      return;
-    }
+    if (!user || !client) { setProfile(null); return; }
     const fetchProfile = async () => {
       const { data } = await client.from('profiles').select('*').eq('id', user.id).single();
       if (data) setProfile(data);
@@ -80,17 +105,24 @@ export const AuthProvider = ({ children }) => {
   const value = {
     user, profile, loading, isAdmin, supabase: client,
     login: (email, password) => client.auth.signInWithPassword({ email, password }),
-    register: (email, password) => client.auth.signUp({ email, password }),
+    register: (email, password, username) => client.auth.signUp({ 
+      email, 
+      password, 
+      options: { data: { username } } 
+    }),
     logout: () => client.auth.signOut(),
     triggerMpesaPush: async (planId, phone) => {
-      let formattedPhone = phone.replace(/\D/g, '');
-      if (formattedPhone.startsWith('0')) formattedPhone = '254' + formattedPhone.slice(1);
-      if (formattedPhone.startsWith('7') || formattedPhone.startsWith('1')) formattedPhone = '254' + formattedPhone;
-      const { data, error } = await client.functions.invoke('mpesa-push', {
-        body: { planId, phone: formattedPhone, amount: PLANS[planId].priceKes, userId: user.id }
-      });
-      if (error) throw error;
-      return data;
+      try {
+        let formattedPhone = phone.replace(/\D/g, '');
+        if (formattedPhone.startsWith('0')) formattedPhone = '254' + formattedPhone.slice(1);
+        if (formattedPhone.startsWith('7') || formattedPhone.startsWith('1')) formattedPhone = '254' + formattedPhone;
+        if (formattedPhone.length !== 12) throw new Error("Please enter a valid M-Pesa phone number.");
+        const { data, error } = await client.functions.invoke('mpesa-push', {
+          body: { planId, phone: formattedPhone, amount: PLANS[planId].priceKes, userId: user.id }
+        });
+        if (error) throw new Error(error.message);
+        return data;
+      } catch (err) { throw err; }
     },
     finalizeSubscription: async (planId, method) => {
       const plan = PLANS[planId];
@@ -102,88 +134,182 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  if (configError) return <div className="p-20 text-center font-bold text-red-500">Config Error: Check Supabase URL/Key</div>;
-  return (
-    <AuthContext.Provider value={value}>
-      {!client ? <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-indigo-600" /></div> : children}
-    </AuthContext.Provider>
-  );
+  if (configError) return <div className="p-20 text-center font-bold text-red-500">System Configuration Error</div>;
+  return <AuthContext.Provider value={value}>{!client ? <div className="h-screen flex items-center justify-center bg-black"><Loader2 className="animate-spin text-indigo-600" /></div> : children}</AuthContext.Provider>;
 };
 
 const useAuth = () => useContext(AuthContext);
 
-// --- Admin Component ---
-const AdminUserList = () => {
-  const { supabase } = useAuth();
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState(null);
+// --- Sub-Components ---
 
-  const fetchUsers = async () => {
-    setLoading(true);
-    const { data } = await supabase.from('profiles').select('*');
-    if (data) setUsers(data);
-    setLoading(false);
-  };
+const StatCard = ({ label, value, icon: Icon, color }) => (
+  <div className="bg-[#0a0a0a] border border-white/5 rounded-3xl p-6 flex items-center gap-5">
+    <div className={`${color} p-4 rounded-2xl shadow-lg text-white`}>
+      <Icon size={24} />
+    </div>
+    <div>
+      <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest">{label}</p>
+      <p className="text-2xl font-black">{value}</p>
+    </div>
+  </div>
+);
 
-  useEffect(() => { fetchUsers(); }, []);
-
-  const revokeAccess = async (userId) => {
-    setActionLoading(userId);
-    await supabase.from('profiles').update({ 
-      is_subscribed: false, tier: null, allowed_categories: [] 
-    }).eq('id', userId);
-    await fetchUsers();
-    setActionLoading(null);
-  };
-
+const Dashboard = () => {
+  const { profile, logout, user } = useAuth();
+  const displayName = user?.user_metadata?.username || user?.email?.split('@')[0];
+  
   return (
-    <div className="mt-16 bg-white rounded-[2.5rem] p-8 border border-red-100 shadow-sm">
-      <div className="flex items-center justify-between mb-8">
-        <h3 className="text-2xl font-black text-slate-900 flex items-center gap-2 uppercase italic">
-          <ShieldCheck className="text-red-600" /> Admin Console
-        </h3>
-        <button onClick={fetchUsers} className="text-slate-400 hover:text-indigo-600">
-          <RefreshCw size={20} className={loading ? 'animate-spin' : ''}/>
-        </button>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-left">
-          <thead>
-            <tr className="text-slate-400 text-[10px] uppercase font-black tracking-widest border-b border-slate-50">
-              <th className="pb-4 px-4">User ID</th>
-              <th className="pb-4 px-4 text-center">Status</th>
-              <th className="pb-4 px-4 text-center">Tier</th>
-              <th className="pb-4 px-4 text-right">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map(u => (
-              <tr key={u.id} className="border-b border-slate-50 last:border-0">
-                <td className="py-4 px-4 font-medium text-xs text-slate-500 font-mono">{u.id}</td>
-                <td className="py-4 px-4 text-center">
-                  {u.is_subscribed ? 
-                    <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-[10px] font-black uppercase">Active</span> : 
-                    <span className="bg-slate-100 text-slate-400 px-3 py-1 rounded-full text-[10px] font-black uppercase">Revoked</span>
-                  }
-                </td>
-                <td className="py-4 px-4 text-center font-bold text-slate-800 text-xs">{u.tier || '-'}</td>
-                <td className="py-4 px-4 text-right">
-                  {u.is_subscribed && (
-                    <button 
-                      disabled={actionLoading === u.id}
-                      onClick={() => revokeAccess(u.id)}
-                      className="text-red-500 hover:text-red-700 font-bold text-xs inline-flex items-center gap-1"
-                    >
-                      {actionLoading === u.id ? <Loader2 className="animate-spin" size={12}/> : <UserX size={12} />} Revoke
-                    </button>
-                  )}
-                </td>
-              </tr>
+    <div className="min-h-screen bg-[#020202] text-white flex font-sans">
+      <aside className="w-72 border-r border-white/5 flex flex-col p-8 bg-[#050505] fixed h-full z-10">
+        <div className="flex items-center gap-3 mb-12">
+          <div className="bg-indigo-600 p-2 rounded-xl shadow-[0_0_15px_rgba(79,70,229,0.4)]">
+            <ShieldCheck size={24} />
+          </div>
+          <span className="text-xl font-black italic uppercase tracking-tighter">Apex Gigs</span>
+        </div>
+
+        <nav className="flex-1 space-y-2">
+          <p className="text-[10px] font-black uppercase text-slate-600 tracking-widest mb-4 ml-2">Main Menu</p>
+          <button className="w-full text-left flex items-center gap-4 p-4 rounded-2xl bg-white/5 text-white font-bold border border-white/5 shadow-inner transition-all">
+            <LayoutDashboard size={20} className="text-indigo-500" /> Dashboard
+          </button>
+          <button className="w-full text-left flex items-center gap-4 p-4 rounded-2xl text-slate-500 font-bold hover:bg-white/5 hover:text-white transition-all">
+            <Zap size={20} /> Marketplace
+          </button>
+          <button className="w-full text-left flex items-center gap-4 p-4 rounded-2xl text-slate-500 font-bold hover:bg-white/5 hover:text-white transition-all">
+            <Activity size={20} /> Activity Log
+          </button>
+          <button className="w-full text-left flex items-center gap-4 p-4 rounded-2xl text-slate-500 font-bold hover:bg-white/5 hover:text-white transition-all">
+            <Settings size={20} /> Settings
+          </button>
+        </nav>
+
+        <div className="mt-auto">
+          <div className="bg-[#0a0a0a] border border-white/5 rounded-2xl p-4 mb-4">
+            <p className="text-[10px] font-black text-slate-500 uppercase mb-1">Session ID</p>
+            <p className="text-[10px] font-bold truncate text-slate-300 font-mono">{user?.id}</p>
+          </div>
+          <button onClick={logout} className="w-full flex items-center gap-4 p-4 rounded-2xl text-red-400/70 font-bold hover:bg-red-500/10 hover:text-red-400 transition-all">
+            <LogOut size={20} /> Sign Out
+          </button>
+        </div>
+      </aside>
+
+      <main className="flex-1 ml-72 flex flex-col">
+        <header className="h-24 border-b border-white/5 px-10 flex items-center justify-between sticky top-0 bg-[#020202]/80 backdrop-blur-md z-10">
+          <div className="relative w-96 group">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600 group-focus-within:text-indigo-500 transition-colors" size={18}/>
+            <input type="text" placeholder="Search accounts, tasks, or gigs..." className="w-full bg-white/5 border border-white/5 rounded-full py-3 pl-12 pr-6 outline-none focus:border-indigo-500/50 transition-all text-sm font-medium" />
+          </div>
+          <div className="flex items-center gap-4">
+            <button className="p-3 rounded-full bg-white/5 border border-white/5 hover:bg-white/10 transition-colors relative">
+              <Bell size={20} className="text-slate-400" />
+              <span className="absolute top-2 right-2 w-2 h-2 bg-indigo-500 rounded-full border-2 border-black"></span>
+            </button>
+            <div className="flex items-center gap-3 bg-white/5 p-2 rounded-full border border-white/5">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-600 to-purple-600 border border-white/10 flex items-center justify-center font-black text-[10px]">
+                {displayName[0]?.toUpperCase()}
+              </div>
+              <span className="text-xs font-bold mr-2">{displayName}</span>
+            </div>
+          </div>
+        </header>
+
+        <div className="p-10 max-w-7xl mx-auto w-full">
+          <div className="flex items-end justify-between mb-10">
+            <div>
+              <h1 className="text-4xl font-black italic uppercase tracking-tighter mb-2">Apex Marketplace</h1>
+              <p className="text-slate-500 font-medium">Browse and launch your high-tier professional writing portals.</p>
+            </div>
+            <div className="flex bg-[#0a0a0a] rounded-2xl border border-white/5 p-1">
+              <button className="px-6 py-2 rounded-xl bg-white/5 text-white text-xs font-black uppercase tracking-widest">All Available</button>
+              <button className="px-6 py-2 rounded-xl text-slate-600 text-xs font-black uppercase tracking-widest hover:text-slate-400 transition-colors">My Gigs</button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+            <StatCard label="Active Accounts" value={profile?.allowed_categories?.length || 0} icon={Globe} color="bg-indigo-600" />
+            <StatCard label="Market Status" value="Healthy" icon={Activity} color="bg-emerald-600" />
+            <StatCard label="Security Level" value="High" icon={ShieldCheck} color="bg-purple-600" />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {profile?.allowed_categories?.map((cat) => (
+              <div key={cat} className="group bg-[#0a0a0a] rounded-[2.5rem] border border-white/5 p-8 shadow-2xl hover:border-indigo-500/30 transition-all duration-300 relative overflow-hidden flex flex-col">
+                <div className="absolute top-0 right-0 p-4">
+                  <span className="bg-indigo-500/10 text-indigo-400 text-[10px] font-black uppercase px-3 py-1 rounded-full border border-indigo-500/20">Active</span>
+                </div>
+                <div className="bg-white/5 w-16 h-16 rounded-3xl flex items-center justify-center mb-8 border border-white/5 group-hover:scale-110 transition-transform">
+                  <TrendingUp className="text-indigo-500" size={32} />
+                </div>
+                <h3 className="text-2xl font-black mb-2 leading-tight">{cat}</h3>
+                <p className="text-slate-500 text-sm font-medium mb-8 leading-relaxed flex-1">
+                  High-authority {cat} verified account with active project pipeline and secure login tunnel.
+                </p>
+                <div className="flex items-center justify-between mt-auto pt-6 border-t border-white/5">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Live Portal</span>
+                  </div>
+                  <button className="flex items-center gap-2 bg-white text-black text-xs font-black px-5 py-3 rounded-2xl hover:bg-indigo-500 hover:text-white transition-all shadow-xl group-hover:translate-x-1">
+                    LAUNCH <ExternalLink size={14}/>
+                  </button>
+                </div>
+              </div>
             ))}
-          </tbody>
-        </table>
+            <div className="bg-gradient-to-br from-indigo-900/20 to-purple-900/20 rounded-[2.5rem] border border-dashed border-white/10 p-8 flex flex-col items-center justify-center text-center opacity-70 hover:opacity-100 transition-opacity">
+              <div className="bg-white/5 w-16 h-16 rounded-full flex items-center justify-center mb-4">
+                <Sparkles className="text-indigo-400" />
+              </div>
+              <h4 className="font-black text-lg mb-2 uppercase italic tracking-tighter">Expand Access</h4>
+              <p className="text-xs text-slate-500 mb-6">Upgrade to Premium to unlock Academic and Mercor AI accounts.</p>
+              <button className="text-xs font-black uppercase tracking-widest py-2 px-6 border border-white/10 rounded-full hover:bg-white hover:text-black transition-all">View Plans</button>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+};
+
+const SubscriptionPage = () => {
+  const { logout } = useAuth();
+  const [selectedPlan, setSelectedPlan] = useState(null);
+  return (
+    <div className="min-h-screen bg-[#050505] py-16 px-6 text-white flex flex-col items-center">
+      <div className="w-full max-w-6xl flex justify-between items-center mb-16">
+        <div className="flex items-center gap-2 text-indigo-500">
+          <ShieldCheck size={32} />
+          <span className="font-black text-2xl italic tracking-tighter uppercase">Apex Gigs</span>
+        </div>
+        <button onClick={logout} className="text-slate-500 font-black text-sm hover:text-red-500 transition-colors uppercase tracking-widest">LOGOUT</button>
       </div>
+      <div className="text-center mb-16 max-w-2xl">
+        <h1 className="text-5xl md:text-6xl font-black mb-4 italic uppercase tracking-tighter">Choose Your Tier</h1>
+        <p className="text-slate-500 font-medium">Select a plan to unlock high-authority writing accounts and professional portals tailored to your expertise.</p>
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 w-full max-w-6xl">
+        {Object.values(PLANS).map(plan => (
+          <div key={plan.id} className="bg-[#0a0a0a] p-10 rounded-[3rem] border border-white/5 hover:border-indigo-500/30 transition-all flex flex-col shadow-2xl group">
+            <div className={`${plan.color} w-16 h-16 rounded-3xl flex items-center justify-center text-white mb-8 group-hover:scale-110 transition-transform shadow-xl`}><Zap size={32}/></div>
+            <h3 className="text-2xl font-black mb-2">{plan.name}</h3>
+            <p className="text-slate-500 text-sm mb-6">{plan.description}</p>
+            <div className="text-4xl font-black text-indigo-500 mb-8">KES {plan.priceKes.toLocaleString()}</div>
+            <ul className="space-y-4 mb-10 flex-1">
+              {plan.categories.map(cat => (
+                <li key={cat} className="flex items-center gap-3 text-slate-400 font-bold text-sm">
+                  <div className="bg-green-500/10 p-1 rounded-full"><Check size={14} className="text-green-500" /></div> {cat}
+                </li>
+              ))}
+              <li className="flex items-center gap-3 text-slate-600 font-bold text-sm">
+                 <div className="p-1 rounded-full bg-slate-500/5"><Check size={14} className="text-slate-700" /></div> 24/7 Support Tunnel
+              </li>
+            </ul>
+            <button onClick={() => setSelectedPlan(plan)} className="w-full py-6 rounded-2xl bg-white text-black font-black hover:bg-indigo-600 hover:text-white transition-all shadow-xl uppercase">Purchase Access</button>
+          </div>
+        ))}
+      </div>
+      {selectedPlan && <PaymentModal plan={selectedPlan} onClose={() => setSelectedPlan(null)} />}
     </div>
   );
 };
@@ -193,154 +319,166 @@ const PaymentModal = ({ plan, onClose }) => {
   const [method, setMethod] = useState(null); 
   const [phone, setPhone] = useState('2547');
   const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
   const handleMpesa = async (e) => {
     e.preventDefault();
-    setLoading(true);
-    setStatus('Initiating...');
+    setLoading(true); setError('');
     try {
       await triggerMpesaPush(plan.id, phone);
       setSuccess(true);
-    } catch (err) {
-      setError("M-Pesa STK Push Error.");
-      setLoading(false);
-    }
+    } catch (err) { setError(err.message || "Network Error. Please try again."); setLoading(false); }
   };
 
-  const handleDemoPayment = async () => {
+  const handleDemo = async () => {
     setLoading(true);
     try {
       await new Promise(r => setTimeout(r, 1000));
-      await finalizeSubscription(plan.id, 'DEMO');
+      await finalizeSubscription(plan.id, 'DEMO_CREDIT');
       onClose();
     } catch (err) { setError(err.message); setLoading(false); }
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl">
-        <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-          <h3 className="font-bold text-xl text-slate-800">Checkout</h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X /></button>
-        </div>
-        <div className="p-6">
-          {error && <div className="bg-red-50 text-red-600 p-3 rounded-xl text-xs font-bold mb-4">{error}</div>}
-          {!method ? (
-            <div className="space-y-3">
-              <button onClick={() => setMethod('mpesa')} className="w-full flex items-center justify-between p-4 rounded-2xl border-2 border-slate-100 hover:border-green-500 hover:bg-green-50 transition font-bold"><div className="flex items-center gap-3"><Smartphone className="text-green-500" /> M-Pesa STK</div><CheckCircle className="text-slate-200" /></button>
-              <button onClick={handleDemoPayment} className="w-full flex items-center justify-between p-4 rounded-2xl border-2 border-slate-100 hover:border-indigo-500 hover:bg-indigo-50 transition font-bold"><div className="flex items-center gap-3"><Zap className="text-indigo-600" /> Demo Unlock</div><CheckCircle className="text-slate-200" /></button>
-            </div>
-          ) : success ? (
-            <div className="text-center py-6">
-              <Check className="mx-auto text-green-500 mb-4" size={40} />
-              <h4 className="font-black text-xl mb-2">PIN Prompt Sent</h4>
-              <p className="text-slate-500 text-sm">Enter PIN on phone.</p>
-            </div>
-          ) : (
-            <form onSubmit={handleMpesa} className="space-y-4">
-              <input type="text" className="w-full p-4 rounded-2xl border-2 border-slate-100 outline-none" value={phone} onChange={e => setPhone(e.target.value)} />
-              <button disabled={loading} className="w-full bg-green-600 text-white py-4 rounded-2xl font-bold">{loading ? status : 'Pay'}</button>
-            </form>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const SubscriptionPage = () => {
-  const { logout } = useAuth();
-  const [selectedPlan, setSelectedPlan] = useState(null);
-  return (
-    <div className="min-h-screen bg-slate-50 py-12 px-4">
-      <div className="max-w-6xl mx-auto text-center">
-        <button onClick={logout} className="mb-8 flex items-center gap-2 text-slate-400 font-bold mx-auto hover:text-indigo-600"><ArrowLeft size={16}/> Sign Out</button>
-        <h1 className="text-5xl font-black text-slate-900 mb-12 italic uppercase tracking-tighter">Apex Gigs</h1>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {Object.values(PLANS).map(plan => (
-            <div key={plan.id} className="bg-white p-8 rounded-[2.5rem] shadow-xl border border-slate-100">
-              <div className={`${plan.color} w-14 h-14 rounded-3xl flex items-center justify-center text-white mb-6 mx-auto`}><Zap /></div>
-              <h3 className="text-2xl font-black mb-1">{plan.name}</h3>
-              <div className="mb-8 font-black text-3xl text-indigo-600">KES {plan.priceKes.toLocaleString()}</div>
-              <button onClick={() => setSelectedPlan(plan)} className="w-full py-5 rounded-2xl bg-slate-900 text-white font-black">Choose Plan</button>
-            </div>
-          ))}
-        </div>
-        {selectedPlan && <PaymentModal plan={selectedPlan} onClose={() => setSelectedPlan(null)} />}
-      </div>
-    </div>
-  );
-};
-
-const Dashboard = () => {
-  const { profile, logout, user, isAdmin } = useAuth();
-  return (
-    <div className="min-h-screen bg-slate-100 flex flex-col md:flex-row">
-      <aside className="w-full md:w-80 bg-slate-950 text-white p-8 flex flex-col">
-        <div className="flex items-center gap-3 mb-12">
-          <div className="bg-indigo-600 p-2 rounded-xl"><ShieldCheck size={24}/></div>
-          <span className="text-xl font-black italic uppercase tracking-tighter">Apex Gigs</span>
-        </div>
-        <nav className="flex-1">
-          <button className="w-full text-left flex items-center gap-3 p-4 rounded-2xl bg-indigo-600 font-bold"><LayoutDashboard size={20} /> Dashboard</button>
-        </nav>
-        <button onClick={logout} className="flex items-center gap-3 text-slate-500 font-bold p-4"><LogOut size={20} /> Sign Out</button>
-      </aside>
-      <main className="flex-1 p-8 md:p-16">
-        <div className="max-w-5xl mx-auto">
-          <h2 className="text-4xl font-black text-slate-900 mb-8 italic">Welcome back</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {profile?.allowed_categories?.map(cat => (
-              <div key={cat} className="bg-white p-8 rounded-[2.5rem] border border-slate-200">
-                <TrendingUp className="text-indigo-600 mb-4" />
-                <h4 className="font-black text-slate-800 text-lg mb-2">{cat}</h4>
-                <button className="text-sm font-bold text-indigo-600">Launch Portal</button>
-              </div>
-            ))}
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+      <div className="bg-[#0a0a0a] border border-white/5 rounded-[3rem] w-full max-w-md overflow-hidden shadow-2xl p-10 relative">
+        <button onClick={onClose} className="absolute top-8 right-8 text-slate-500 hover:text-white"><X /></button>
+        <h3 className="font-black text-3xl mb-8 italic uppercase tracking-tighter text-white">Payment Method</h3>
+        {error && <div className="bg-red-500/10 text-red-500 p-4 rounded-2xl text-[10px] font-black uppercase tracking-widest mb-6 flex gap-2"><AlertCircle size={14}/> {error}</div>}
+        {!method ? (
+          <div className="space-y-4">
+            <button onClick={() => setMethod('mpesa')} className="w-full flex items-center justify-between p-6 rounded-3xl bg-white/5 border border-white/5 hover:border-green-500/50 transition-all font-black text-white">
+              <div className="flex items-center gap-4 text-lg"><Smartphone className="text-green-500" /> M-Pesa Checkout</div>
+              <ChevronRight size={20} />
+            </button>
+            <button onClick={handleDemo} className="w-full flex items-center justify-between p-6 rounded-3xl bg-white/5 border border-white/5 hover:border-indigo-500/50 transition-all font-black text-white">
+              <div className="flex items-center gap-4 text-lg"><Zap className="text-indigo-500" /> Instant Demo Access</div>
+              <ChevronRight size={20} />
+            </button>
           </div>
-          {isAdmin && <AdminUserList />}
-        </div>
-      </main>
+        ) : success ? (
+          <div className="text-center py-8">
+            <CheckCircle className="text-green-500 mx-auto mb-4" size={64} />
+            <h4 className="text-2xl font-black text-white mb-2 uppercase italic tracking-tighter">Request Sent</h4>
+            <p className="text-slate-500 font-medium mb-8">Enter your M-Pesa PIN on your phone ({phone}) to complete the payment for {plan.name}.</p>
+            <button onClick={onClose} className="w-full bg-white text-black py-5 rounded-2xl font-black uppercase">Close Window</button>
+          </div>
+        ) : (
+          <form onSubmit={handleMpesa} className="space-y-6">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase text-slate-500 ml-4 tracking-widest">Phone Number</label>
+              <input type="text" value={phone} onChange={e => setPhone(e.target.value)} className="w-full bg-white/5 border border-white/5 p-5 rounded-2xl outline-none focus:border-green-500 transition-all font-black text-white text-xl" placeholder="2547..." />
+            </div>
+            <button disabled={loading} className="w-full bg-white text-black py-5 rounded-2xl font-black flex items-center justify-center gap-2 text-lg disabled:opacity-50 uppercase">
+              {loading ? <Loader2 className="animate-spin" /> : 'Confirm & Pay'}
+            </button>
+            <button type="button" onClick={() => setMethod(null)} className="w-full text-slate-500 font-bold text-[10px] uppercase tracking-widest">Change Method</button>
+          </form>
+        )}
+      </div>
     </div>
   );
 };
 
 const AuthGate = () => {
   const { user, profile, loading, login, register } = useAuth();
-  const [view, setView] = useState('login');
+  const [view, setView] = useState('welcome');
   const [formErr, setFormErr] = useState('');
   const [btnLoading, setBtnLoading] = useState(false);
+  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
-  if (loading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-indigo-600" /></div>;
-  if (!user) return (
-    <div className="h-screen flex flex-col items-center justify-center bg-slate-50 p-6">
-      <h1 className="text-5xl font-black italic uppercase tracking-tighter mb-10">Apex Gigs</h1>
-      <div className="bg-white p-10 rounded-[3rem] shadow-2xl w-full max-w-md border border-slate-100">
-        <h2 className="text-3xl font-black mb-8 italic">{view === 'login' ? 'Login' : 'Register'}</h2>
-        <form onSubmit={async (e) => {
-          e.preventDefault();
-          setFormErr(''); setBtnLoading(true);
-          try {
-            const { error } = view === 'login' ? await login(e.target.email.value, e.target.password.value) : await register(e.target.email.value, e.target.password.value);
-            if (error) throw error;
-          } catch (err) { setFormErr(err.message); } finally { setBtnLoading(false); }
-        }} className="space-y-4">
-          <input name="email" type="email" placeholder="Email" className="w-full p-5 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 outline-none font-bold" required />
-          <input name="password" type="password" placeholder="Password" className="w-full p-5 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 outline-none font-bold" required />
-          {formErr && <p className="text-red-500 text-xs font-bold">{formErr}</p>}
-          <button disabled={btnLoading} className="w-full bg-indigo-600 text-white py-5 rounded-2xl font-black shadow-lg">
-            {btnLoading ? <Loader2 className="animate-spin mx-auto" /> : 'Continue'}
-          </button>
-          <button type="button" onClick={() => setView(view === 'login' ? 'reg' : 'login')} className="w-full text-slate-400 text-xs font-bold pt-2">
-            {view === 'login' ? "New here? Register" : "Have account? Login"}
-          </button>
-        </form>
+  if (loading) return <div className="h-screen flex flex-col items-center justify-center bg-black"><Loader2 className="animate-spin text-indigo-600 mb-4" size={48} /><span className="text-slate-600 font-black tracking-widest text-[10px] uppercase">Connecting to Server</span></div>;
+  
+  if (!user) {
+    if (view === 'welcome') return (
+      <div className="h-screen bg-[#050505] flex flex-col items-center justify-between p-8 text-white">
+        <div className="flex-1 flex flex-col items-center justify-center text-center space-y-10">
+          <div className="bg-[#0a0a0a] p-8 rounded-[3rem] border border-white/5 shadow-2xl relative">
+             <div className="absolute -inset-1 bg-indigo-500/20 blur-xl rounded-full"></div>
+             <ShieldCheck size={64} className="text-indigo-500 relative z-10" />
+          </div>
+          <div className="space-y-4">
+            <h1 className="text-7xl font-black italic uppercase tracking-tighter">Apex <span className="text-slate-600">Gigs</span></h1>
+            <p className="text-slate-500 font-medium text-lg max-w-sm">Secure high-tier writing portal and verified account marketplace.</p>
+          </div>
+        </div>
+        <button onClick={() => setView('login')} className="w-full max-w-md bg-white text-black py-6 rounded-full font-black text-xl flex items-center justify-center gap-3 mb-12 hover:bg-slate-200 transition-all uppercase tracking-tighter">ENTER MARKETPLACE <ChevronRight /></button>
       </div>
-    </div>
-  );
+    );
+
+    return (
+      <div className="h-screen bg-[#050505] flex flex-col items-center justify-center p-6 text-white font-sans overflow-y-auto">
+        <button onClick={() => { setView('welcome'); setFormErr(''); }} className="absolute top-8 left-8 text-slate-600 hover:text-white font-black text-[10px] tracking-widest flex items-center gap-2 uppercase"> <ArrowLeft size={16}/> Back Home</button>
+        <div className="w-full max-w-md py-12">
+          <div className="text-center mb-10">
+            <h2 className="text-4xl font-black italic uppercase tracking-tighter mb-2">{view === 'login' ? 'Partner Login' : 'Register Account'}</h2>
+            <p className="text-slate-500 font-medium">{view === 'login' ? 'Verify your credentials to proceed.' : 'Join the elite marketplace today.'}</p>
+          </div>
+          <div className="bg-[#0a0a0a] border border-white/5 rounded-[3rem] p-10 shadow-2xl relative">
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              setFormErr('');
+              if (view === 'reg') {
+                if (!username.trim()) return setFormErr('Username is required.');
+                if (password.length < 6) return setFormErr('Security threshold not met: Password must be at least 6 characters.');
+                if (password !== confirmPassword) return setFormErr('Validation failed: Passwords do not match.');
+              }
+              setBtnLoading(true);
+              try {
+                const { error } = view === 'login' ? await login(email, password) : await register(email, password, username);
+                if (error) throw error;
+              } catch (err) { setFormErr(err.message); } finally { setBtnLoading(false); }
+            }} className="space-y-5">
+              {view === 'reg' && (
+                <div className="space-y-2 animate-in slide-in-from-top-2">
+                  <label className="text-[10px] font-black uppercase text-slate-600 ml-4 tracking-widest">Preferred Username</label>
+                  <div className="relative">
+                    <User className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-700" size={18} />
+                    <input type="text" value={username} onChange={e => setUsername(e.target.value)} placeholder="e.g. ApexWriter101" className="w-full bg-white/5 border border-white/5 p-5 pl-14 rounded-3xl text-white font-bold outline-none focus:border-indigo-500 transition-all" required />
+                  </div>
+                </div>
+              )}
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase text-slate-600 ml-4 tracking-widest">Email Address</label>
+                <div className="relative">
+                  <Mail className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-700" size={18} />
+                  <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="yourname@domain.com" className="w-full bg-white/5 border border-white/5 p-5 pl-14 rounded-3xl text-white font-bold outline-none focus:border-indigo-500 transition-all" required />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase text-slate-600 ml-4 tracking-widest">Security Password</label>
+                <div className="relative">
+                  <Lock className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-700" size={18} />
+                  <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Min. 6 characters" className="w-full bg-white/5 border border-white/5 p-5 pl-14 rounded-3xl text-white font-bold outline-none focus:border-indigo-500 transition-all" required />
+                </div>
+              </div>
+              {view === 'reg' && (
+                <div className="space-y-2 animate-in slide-in-from-top-2">
+                  <label className="text-[10px] font-black uppercase text-slate-600 ml-4 tracking-widest">Confirm Password</label>
+                  <div className="relative">
+                    <ShieldAlert className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-700" size={18} />
+                    <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Re-enter password" className="w-full bg-white/5 border border-white/5 p-5 pl-14 rounded-3xl text-white font-bold outline-none focus:border-indigo-500 transition-all" required />
+                  </div>
+                </div>
+              )}
+              {formErr && <div className="bg-red-500/10 text-red-500 p-4 rounded-2xl text-[10px] font-black uppercase tracking-widest text-center">{formErr}</div>}
+              <button disabled={btnLoading} className="w-full bg-white text-black py-5 rounded-3xl font-black text-lg hover:bg-slate-200 transition-all flex items-center justify-center gap-2 mt-4 uppercase">
+                {btnLoading ? <Loader2 className="animate-spin" /> : (view === 'login' ? 'Sign In' : 'Create Account')}
+              </button>
+              <button type="button" onClick={() => { setView(view === 'login' ? 'reg' : 'login'); setFormErr(''); }} className="w-full text-slate-500 font-bold text-xs pt-4 hover:text-white transition-colors">
+                {view === 'login' ? "Don't have an account? Join Apex" : "Already a partner? Secure Login"}
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
   return profile?.is_subscribed ? <Dashboard /> : <SubscriptionPage />;
 };
 

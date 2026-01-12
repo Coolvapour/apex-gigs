@@ -6,72 +6,65 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
-  }
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
   try {
-    const { phone, amount, userId } = await req.json()
+    const { phone, amount, userId, planId } = await req.json()
 
-    // 1. Get Access Token
-    const consumerKey = Deno.env.get("MPESA_CONSUMER_KEY")
-    const consumerSecret = Deno.env.get("MPESA_CONSUMER_SECRET")
+    // Sandbox Credentials
+    const consumerKey = "avPPYDjgd0rdQ2jAzGKDADa0kurvtKnzvUJ3xlYq52Y3hp1V"
+    const consumerSecret = "GAWUrJf3AylzxDThmaQx6rmQyGugGZn3T9kogHSGaUs025RHtwA0Z79fHYBZKUHn"
+    const shortCode = "174379"
+    const passkey = "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919"
+
+    // 1. Get Token
     const auth = btoa(`${consumerKey}:${consumerSecret}`)
-    
-    const tokenResponse = await fetch("https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials", {
+    const tokenRes = await fetch("https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials", {
       headers: { Authorization: `Basic ${auth}` }
     })
-    
-    const { access_token } = await tokenResponse.json()
-    if (!access_token) throw new Error("Failed to get M-Pesa access token")
+    const { access_token } = await tokenRes.json()
 
-    // 2. Prepare STK Push Parameters
-    const shortCode = Deno.env.get("MPESA_SHORTCODE") || "174379"
-    const passkey = Deno.env.get("MPESA_PASSKEY")
+    // 2. Prepare STK Push
     const timestamp = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 14)
     const password = btoa(shortCode + passkey + timestamp)
 
-    // Ensure phone is in 2547XXXXXXXX format
     let formattedPhone = phone.replace(/\D/g, '')
     if (formattedPhone.startsWith('0')) formattedPhone = '254' + formattedPhone.slice(1)
 
-    const stkPayload = {
-      BusinessShortCode: shortCode,
-      Password: password,
-      Timestamp: timestamp,
-      TransactionType: "CustomerPayBillOnline",
-      Amount: Math.round(amount),
-      PartyA: formattedPhone,
-      PartyB: shortCode,
-      PhoneNumber: formattedPhone,
-      CallBackURL: `https://zpmpbnjyapszxeprcnva.supabase.co/functions/v1/mpesa-callback`,
-      AccountReference: `ApexGigs`,
-      TransactionDesc: `Pay for ${userId.slice(0, 8)}`
-    }
+    // CRITICAL: Link the payment to the user using query parameters
+    const callbackUrl = `https://zpmpbnjyapszxeprcnva.supabase.co/functions/v1/mpesa-callback?userId=${userId}&planId=${planId}`;
 
-    // 3. Request STK Push
     const response = await fetch("https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest", {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${access_token}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(stkPayload)
+      body: JSON.stringify({
+        BusinessShortCode: shortCode,
+        Password: password,
+        Timestamp: timestamp,
+        TransactionType: "CustomerPayBillOnline",
+        Amount: Math.round(amount),
+        PartyA: formattedPhone,
+        PartyB: shortCode,
+        PhoneNumber: formattedPhone,
+        CallBackURL: callbackUrl,
+        AccountReference: "ApexGigs",
+        TransactionDesc: `Subscription ${planId}`
+      })
     })
 
     const result = await response.json()
-
     return new Response(JSON.stringify(result), { 
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200 
     })
 
   } catch (error) {
-    console.error("M-Pesa Error:", error.message)
     return new Response(JSON.stringify({ error: error.message }), { 
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 400 
+      status: 400, 
+      headers: corsHeaders 
     })
   }
 })
