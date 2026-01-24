@@ -32,7 +32,7 @@ const PLANS = {
     priceUsd: 215,
     weeklyProfit: 12000,
     color: 'bg-purple-600', 
-    categories: ['Online writing accounts', 'Academic writing accounts', 'Mercor AI Accounts'],
+    categories: ['Online writing tasks', 'Academic writing tasks', 'Mercor AI tasks'],
     description: 'Elite access for high-volume writing professionals.'
   },
   A2: { 
