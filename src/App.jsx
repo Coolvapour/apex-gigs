@@ -22,7 +22,7 @@ import {
 
 const ADMIN_EMAILS = ['admin@writingportal.com', 'kipronoleleito594@gmail.com'];
 const PAYBILL_NUMBER = "0781032460"; 
-const PAYPAL_EMAIL = "payments@apexgigs.com";
+const PAYPAL_EMAIL = "kipronoleleito594@gmail.com";
 
 const PLANS = {
   A1: { 
@@ -542,7 +542,7 @@ const PaymentModal = ({ plan, onClose }) => {
               <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
             </button>
             <button className="w-full flex items-center justify-between p-6 rounded-3xl bg-white/5 border border-white/5 opacity-50 cursor-not-allowed font-black text-white group">
-              <div className="flex items-center gap-4 text-lg"><DollarSign className="text-blue-500" /> PayPal (Offline)</div>
+              <div className="flex items-center gap-4 text-lg"><DollarSign className="text-blue-500" /> PayPal (Online)</div>
             </button>
           </div>
         ) : method === 'mpesa_manual' ? (
