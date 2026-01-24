@@ -50,7 +50,7 @@ const PLANS = {
     name: 'Basic Tier', 
     priceKes: 4500, 
     priceUsd: 58,
-    weeklyProfit: 5500,
+    weeklyProfit: 2500,
     color: 'bg-emerald-600', 
     categories: ['Map reviews', 'Data annotation', 'Handshake AI'],
     description: 'Entry-level tasks for growing your digital profile.'
