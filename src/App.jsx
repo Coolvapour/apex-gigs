@@ -48,7 +48,7 @@ const PLANS = {
   A3: { 
     id: 'A3', 
     name: 'Basic Tier', 
-    priceKes: 7500, 
+    priceKes: 4500, 
     priceUsd: 58,
     weeklyProfit: 5500,
     color: 'bg-emerald-600', 
